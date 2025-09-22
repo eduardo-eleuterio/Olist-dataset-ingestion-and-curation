@@ -1,2 +1,6 @@
-data/
 *.docx
+logs/*
+!logs/.gitkeep
+data/*
+!data/.gitkeep
+dags/__pycache__/*
