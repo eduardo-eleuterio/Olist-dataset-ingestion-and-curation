@@ -27,7 +27,7 @@ Pipeline de dados automatizado para ingestão, limpeza e modelagem do histórico
 
 1. **Clone o repositório**
    ```bash
-   git clone <seu-repo>
+   git clone https://github.com/eduardo-eleuterio/Olist-dataset-ingestion-and-curation.git
    cd Olist-dataset-ingestion-and-curation
    ```
 
@@ -95,11 +95,6 @@ Você pode acessar o banco de dados diretamente pelo terminal usando o comando a
        ```sql
        \q
        ```
-
-## Como validar
-
-- Verifique as tabelas nos schemas `bronze` e `silver` do PostgreSQL.
-- Consulte os logs das DAGs no Airflow para eventuais erros.
 
 ## Referências
 

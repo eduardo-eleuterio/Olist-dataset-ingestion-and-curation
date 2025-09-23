@@ -4,6 +4,8 @@ from datetime import datetime
 import pandas as pd
 import psycopg2
 import os
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+
 
 DATA_PATH = '/data' 
 CSV_FILES = [
@@ -62,3 +64,10 @@ with DAG(
             op_kwargs={'file_name': file_name}
         )
         tasks.append(task)
+
+trigger_silver = TriggerDagRunOperator(
+    task_id='trigger_silver',
+    trigger_dag_id='processamento_silver'
+)
+
+tasks[-1] >> trigger_silver
