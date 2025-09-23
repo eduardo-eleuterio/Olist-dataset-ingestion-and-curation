@@ -17,6 +17,9 @@ Pipeline de dados automatizado para ingestão, limpeza e modelagem do histórico
 ├── requirements.txt
 └── README.md
 ```
+## Estrutura das tabelas 
+
+<img width="820" height="570" alt="image" src="https://github.com/user-attachments/assets/4d3bd242-82c3-4760-b40f-075f96443249" />
 
 ## Pré-requisitos
 
