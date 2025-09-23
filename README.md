@@ -9,7 +9,8 @@ Pipeline de dados automatizado para ingestão, limpeza e modelagem do histórico
 ```
 ├── dags/
 │   ├── ingestao_bronze.py
-│   └── processamento_silver.py
+│   ├── processamento_silver.py
+│   └── carga_gold.py
 ├── data/
 │   └── [arquivos CSV extraídos do dataset Olist]
 ├── docker-compose.yaml
@@ -61,16 +62,28 @@ Pipeline de dados automatizado para ingestão, limpeza e modelagem do histórico
    - Realiza limpeza, padronização e deduplicação, salvando no schema `silver`.
 
 3. **Camada Gold**
-   - (Implemente a DAG `carga_gold.py` conforme o desafio para consolidar o Data Mart analítico.)
+   - Execute a DAG `carga_gold` para consolidar o Data Mart analítico no schema `gold`.
 
 ## Decisões e Justificativas
 
-- **Idempotência:** As DAGs droppam e recriam tabelas para evitar duplicidade.
+- **Idempotência:** As DAGs droppam e recriam tabelas para evitar duplicidade e garantir reprocessamento seguro.
 - **Tratamento de Nulos:** Na silver, mantemos nulo em `order_delivered_customer_date` para pedidos não entregues, permitindo cálculos precisos de tempo de entrega apenas para pedidos concluídos.
-- **Sanitização de CEP:** Usamos regex para garantir apenas 5 dígitos numéricos.
-- **Normalização de Categorias:** Padronização para caixa baixa e remoção de espaços.
-- **Deduplicação:** Remoção de duplicatas em `olist_order_items_dataset` por `order_id` e `order_item_id`.
+- **Sanitização de CEP:** Usamos regex para garantir apenas 5 dígitos numéricos, evitando inconsistências.
+- **Normalização de Categorias:** Padronização para caixa baixa e remoção de espaços, facilitando agrupamentos e análises.
+- **Deduplicação:** Remoção de duplicatas em `olist_order_items_dataset` por `order_id` e `order_item_id` para garantir integridade.
+- **Tipos de Dados:** Conversão explícita de datas e timestamps para garantir consistência e facilitar análises temporais.
+- **Testes Automatizados:** Notebooks de teste para cada camada validam schema, nulos, duplicados e regras de negócio.
 
+## Testes Automatizados e Análise Final
+
+A pasta `test` contém notebooks de testes para as três camadas do pipeline:
+
+- `test_bronze.ipynb`: Validação da camada Bronze (schema, nulos, duplicados).
+- `test_silver.ipynb`: Testes de qualidade e integridade na camada Silver.
+- `test_gold.ipynb`: Testes de regras de negócio e integridade na camada Gold.
+- `analise_final.ipynb`: Notebook de análise SQL respondendo à pergunta de negócio sobre os clientes que mais gastaram em SP e suas categorias preferidas.
+
+Esses notebooks garantem a qualidade dos dados em cada etapa e facilitam a validação dos resultados do pipeline.
 
 ## Como acessar o banco de dados PostgreSQL
 

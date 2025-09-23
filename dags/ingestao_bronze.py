@@ -21,29 +21,56 @@ CSV_FILES = [
 ]
 
 def ingest_csv_to_postgres(file_name, **kwargs):
-    conn = psycopg2.connect(
-        host='postgres', 
-        dbname='airflow',
-        user='airflow',
-        password='airflow'
-    )
-    table_name = file_name.replace('.csv', '')
-    schema = 'bronze'
-    file_path = os.path.join(DATA_PATH, file_name)
-    df = pd.read_csv(file_path)
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
-
-    with conn.cursor() as cur:
-        cur.execute(f"CREATE SCHEMA IF NOT EXISTS {schema};")
-        cur.execute(f'DROP TABLE IF EXISTS {schema}."{table_name}";')
-        columns = ', '.join([f'"{col}" TEXT' for col in df.columns])
-        cur.execute(f'CREATE TABLE {schema}."{table_name}" ({columns});')
-        for row in df.itertuples(index=False, name=None):
-            values = ', '.join(["'" + str(val).replace("'", "''") + "'" if pd.notnull(val) else 'NULL' for val in row])
-            cur.execute(f'INSERT INTO {schema}."{table_name}" VALUES ({values});')
-        conn.commit()
-    conn.close()
+    """
+    Ingesta um arquivo CSV para o Postgres na camada bronze, validando schema, idempotência e logando etapas.
+    """
+    import logging
+    conn = None
+    try:
+        table_name = file_name.replace('.csv', '')
+        schema = 'bronze'
+        file_path = os.path.join(DATA_PATH, file_name)
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
+        logging.info(f"Lendo arquivo {file_path}")
+        df = pd.read_csv(file_path, encoding='utf-8')
+        if df.empty:
+            logging.warning(f"Arquivo {file_name} está vazio. Pulando ingestão.")
+            return
+        # Validação de schema: checa se tem colunas
+        if len(df.columns) == 0:
+            raise ValueError(f"Arquivo {file_name} não possui colunas.")
+        conn = psycopg2.connect(
+            host='postgres', 
+            dbname='airflow',
+            user='airflow',
+            password='airflow'
+        )
+        with conn.cursor() as cur:
+            cur.execute(f"CREATE SCHEMA IF NOT EXISTS {schema};")
+            # Idempotência: checa se já existe dados
+            cur.execute(f"SELECT count(*) FROM information_schema.tables WHERE table_schema='{schema}' AND table_name='{table_name}';")
+            exists = cur.fetchone()[0]
+            if exists:
+                logging.info(f"Tabela {schema}.{table_name} já existe. Removendo para reprocessar.")
+                cur.execute(f'DROP TABLE IF EXISTS {schema}."{table_name}";')
+            columns = ', '.join([f'"{col}" TEXT' for col in df.columns])
+            cur.execute(f'CREATE TABLE {schema}."{table_name}" ({columns});')
+            logging.info(f"Iniciando ingestão de {len(df)} registros em {schema}.{table_name}")
+            for row in df.itertuples(index=False, name=None):
+                values = ', '.join(["'" + str(val).replace("'", "''") + "'" if pd.notnull(val) else 'NULL' for val in row])
+                cur.execute(f'INSERT INTO {schema}."{table_name}" VALUES ({values});')
+            conn.commit()
+            logging.info(f"Ingestão finalizada para {schema}.{table_name}")
+    except Exception as e:
+        logging.error(f"Erro na ingestão bronze de {file_name}: {e}")
+        raise
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 default_args = {
     'start_date': datetime(2023, 1, 1),
