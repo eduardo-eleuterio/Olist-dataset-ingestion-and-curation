@@ -5,7 +5,7 @@ import pandas as pd
 import psycopg2
 import os
 
-DATA_PATH = '/data'  # ajuste se necessário
+DATA_PATH = '/data' 
 CSV_FILES = [
     'olist_customers_dataset.csv',
     'olist_geolocation_dataset.csv',
@@ -20,7 +20,7 @@ CSV_FILES = [
 
 def ingest_csv_to_postgres(file_name, **kwargs):
     conn = psycopg2.connect(
-        host='postgres',  # nome do serviço no docker-compose
+        host='postgres', 
         dbname='airflow',
         user='airflow',
         password='airflow'
@@ -33,13 +33,10 @@ def ingest_csv_to_postgres(file_name, **kwargs):
         raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
 
     with conn.cursor() as cur:
-        # Cria schema se não existir
         cur.execute(f"CREATE SCHEMA IF NOT EXISTS {schema};")
-        # Cria tabela (drop se existir para idempotência)
         cur.execute(f'DROP TABLE IF EXISTS {schema}."{table_name}";')
         columns = ', '.join([f'"{col}" TEXT' for col in df.columns])
         cur.execute(f'CREATE TABLE {schema}."{table_name}" ({columns});')
-        # Insere dados
         for row in df.itertuples(index=False, name=None):
             values = ', '.join(["'" + str(val).replace("'", "''") + "'" if pd.notnull(val) else 'NULL' for val in row])
             cur.execute(f'INSERT INTO {schema}."{table_name}" VALUES ({values});')
