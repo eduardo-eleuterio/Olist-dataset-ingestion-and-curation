@@ -55,8 +55,8 @@ def build_dm_vendas_clientes():
             df = df.merge(products, on="product_id", how="left")
 
             # Valor gasto = preço + frete
-            df["valor_total_item"] = df["price"].fillna(0) + df["freight_value"].fillna(0)
-
+            df["valor_total_item"] = (pd.to_numeric(df["price"], errors="coerce").fillna(0) + pd.to_numeric(df["freight_value"], errors="coerce").fillna(0))
+        
             # Datas
             df["order_purchase_timestamp"] = pd.to_datetime(df["order_purchase_timestamp"], errors="coerce")
             df["order_delivered_customer_date"] = pd.to_datetime(df["order_delivered_customer_date"], errors="coerce")
@@ -66,19 +66,15 @@ def build_dm_vendas_clientes():
             logging.info(f">>> Data de referência (última compra): {data_referencia}")
 
             # ====== Métricas por cliente ======
-            agregacoes = {
-                "order_id": pd.Series.nunique,
-                "valor_total_item": "sum",
-                "order_purchase_timestamp": ["min", "max"],
-            }
-            resumo = df.groupby("customer_unique_id").agg(agregacoes).reset_index()
-            resumo.columns = [
-                "customer_unique_id",
-                "total_pedidos",
-                "total_gasto",
-                "data_primeira_compra",
-                "data_ultima_compra",
-            ]
+            resumo = df.groupby("customer_unique_id").agg(
+                total_pedidos=pd.NamedAgg(column="order_id", aggfunc="nunique"),
+                total_gasto=pd.NamedAgg(column="valor_total_item", aggfunc="sum"),
+                data_primeira_compra=pd.NamedAgg(column="order_purchase_timestamp", aggfunc="min"),
+                data_ultima_compra=pd.NamedAgg(column="order_purchase_timestamp", aggfunc="max"),
+            ).reset_index()
+
+            if resumo["customer_unique_id"].isnull().any():
+                logging.warning(">>> Atenção: existem registros com customer_unique_id nulo")
 
             # Dias desde última compra
             resumo["dias_desde_ultima_compra"] = (
@@ -131,6 +127,24 @@ def build_dm_vendas_clientes():
                     categoria_mais_comprada TEXT
                 );
             """)
+
+
+            resumo = resumo[
+                [
+                    "customer_unique_id",
+                    "estado_cliente",
+                    "cidade_cliente",
+                    "total_pedidos",
+                    "total_gasto",
+                    "data_primeira_compra",
+                    "data_ultima_compra",
+                    "dias_desde_ultima_compra",
+                    "avg_delivery_time_days",
+                    "categoria_mais_comprada"
+                ]
+            ]
+
+
 
             # Inserir dados
             values = resumo.where(pd.notnull(resumo), None).values.tolist()
