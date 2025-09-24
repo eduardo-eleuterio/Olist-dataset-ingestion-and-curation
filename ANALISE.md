@@ -11,6 +11,7 @@ WHERE estado_cliente = 'SP'
 ORDER BY total_gasto DESC
 LIMIT 10;
 ```
+<img width="566" height="234" alt="image" src="https://github.com/user-attachments/assets/2d61ad27-3626-435e-91e4-f38800de9fc6" />
 
 ## Explicação dos Resultados
 
