@@ -8,13 +8,8 @@ from datetime import datetime, timedelta
 import logging
 
 
+    # ...existing code...
 def build_dm_vendas_clientes():
-    logging.info(">>> Iniciando conexão com Postgres")
-def build_dm_vendas_clientes():
-    """
-    Gera a tabela gold.dm_vendas_clientes com métricas agregadas por cliente.
-    """
-    import logging
     conn = None
     cur = None
     try:
@@ -26,38 +21,21 @@ def build_dm_vendas_clientes():
             password='airflow'
         )
         cur = conn.cursor()
-
-        # Cria schema gold se não existir
         cur.execute("CREATE SCHEMA IF NOT EXISTS gold;")
         conn.commit()
-
-        # Carregar tabelas necessárias da camada Silver
         customers = pd.read_sql('SELECT * FROM silver."olist_customers_dataset";', conn)
         orders = pd.read_sql('SELECT * FROM silver."olist_orders_dataset";', conn)
         order_items = pd.read_sql('SELECT * FROM silver."olist_order_items_dataset";', conn)
         products = pd.read_sql('SELECT * FROM silver."olist_products_dataset";', conn)
-
-        # ====== Preparação ======
-        # Merge clientes + pedidos
         df = orders.merge(customers, on="customer_id", how="left")
         df = df.merge(order_items, on="order_id", how="left")
         df = df.merge(products, on="product_id", how="left")
-
-        # Converter para numérico antes da soma
         df['price'] = pd.to_numeric(df['price'], errors='coerce')
         df['freight_value'] = pd.to_numeric(df['freight_value'], errors='coerce')
-
-        # Valor gasto = preço + frete
         df["valor_total_item"] = df["price"].fillna(0) + df["freight_value"].fillna(0)
-
-        # Datas
         df["order_purchase_timestamp"] = pd.to_datetime(df["order_purchase_timestamp"], errors="coerce")
         df["order_delivered_customer_date"] = pd.to_datetime(df["order_delivered_customer_date"], errors="coerce")
-
-        # Data de referência global = última compra registrada
         data_referencia = df["order_purchase_timestamp"].max()
-
-        # ====== Métricas por cliente ======
         agregacoes = {
             "order_id": pd.Series.nunique,
             "valor_total_item": "sum",
@@ -71,21 +49,15 @@ def build_dm_vendas_clientes():
             "data_primeira_compra",
             "data_ultima_compra",
         ]
-
-        # Dias desde última compra
         resumo["dias_desde_ultima_compra"] = (
             (data_referencia - resumo["data_ultima_compra"]).dt.days
         )
-
-        # Localização do cliente (pega do customers)
         loc = customers[["customer_unique_id", "customer_city", "customer_state"]].drop_duplicates()
         resumo = resumo.merge(loc, on="customer_unique_id", how="left")
         resumo.rename(
             columns={"customer_city": "cidade_cliente", "customer_state": "estado_cliente"},
             inplace=True
         )
-
-        # Tempo médio de entrega (apenas pedidos entregues)
         entregas = df[df["order_delivered_customer_date"].notnull()].copy()
         entregas["tempo_entrega"] = (
             (entregas["order_delivered_customer_date"] - entregas["order_purchase_timestamp"]).dt.days
@@ -93,8 +65,6 @@ def build_dm_vendas_clientes():
         tempo_medio = entregas.groupby("customer_unique_id")["tempo_entrega"].mean().reset_index()
         tempo_medio.rename(columns={"tempo_entrega": "avg_delivery_time_days"}, inplace=True)
         resumo = resumo.merge(tempo_medio, on="customer_unique_id", how="left")
-
-        # Categoria mais comprada (por gasto)
         gastos_categoria = (
             df.groupby(["customer_unique_id", "product_category_name"])["valor_total_item"]
             .sum()
@@ -104,8 +74,6 @@ def build_dm_vendas_clientes():
         categoria_top = gastos_categoria.loc[idx, ["customer_unique_id", "product_category_name"]]
         categoria_top.rename(columns={"product_category_name": "categoria_mais_comprada"}, inplace=True)
         resumo = resumo.merge(categoria_top, on="customer_unique_id", how="left")
-
-        # Garantir ordem e tipo das colunas
         resumo = resumo[
             [
                 "customer_unique_id",
@@ -122,10 +90,7 @@ def build_dm_vendas_clientes():
         ]
         resumo["total_pedidos"] = resumo["total_pedidos"].astype(int)
         resumo["total_gasto"] = resumo["total_gasto"].astype(float)
-
         logging.info(f"Iniciando carga gold: {len(resumo)} registros para inserir")
-
-        # ====== Criar tabela no schema gold ======
         cur.execute('DROP TABLE IF EXISTS gold."dm_vendas_clientes";')
         cur.execute("""
 CREATE TABLE gold."dm_vendas_clientes" (
@@ -141,15 +106,12 @@ CREATE TABLE gold."dm_vendas_clientes" (
     categoria_mais_comprada TEXT
 );
 """)
-
-        # Inserir dados
         values = resumo.where(pd.notnull(resumo), None).values.tolist()
         execute_values(
             cur,
             'INSERT INTO gold."dm_vendas_clientes" VALUES %s',
             values
         )
-
         conn.commit()
         logging.info(f">>> Inseridos {len(values)} registros na tabela gold.dm_vendas_clientes")
     except Exception as e:
