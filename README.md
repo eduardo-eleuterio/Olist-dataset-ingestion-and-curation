@@ -7,15 +7,27 @@ Pipeline de dados automatizado para ingestão, limpeza e modelagem do histórico
 ## Estrutura do Projeto
 
 ```
+├── ANALISE.md
+├── config/
 ├── dags/
+│   ├── carga_gold.py
 │   ├── ingestao_bronze.py
 │   ├── processamento_silver.py
-│   └── carga_gold.py
+│   └── __pycache__/
 ├── data/
 │   └── [arquivos CSV extraídos do dataset Olist]
 ├── docker-compose.yaml
+├── image.png
+├── logs/
+├── plugins/
+├── README.md
 ├── requirements.txt
-└── README.md
+├── test/
+│   ├── analise_final.ipynb
+│   ├── test_bronze.ipynb
+│   ├── test_gold.ipynb
+│   └── test_silver.ipynb
+└── Data Engineer Test _ Eduardo Eleuterio (1).docx
 ```
 ## Estrutura das tabelas 
 
@@ -38,7 +50,12 @@ Pipeline de dados automatizado para ingestão, limpeza e modelagem do histórico
 2. **Coloque os arquivos CSV na pasta `data/`**
    - Baixe o dataset Olist do Kaggle e extraia os 9 arquivos CSV para a pasta `data`.
 
-3. **Configure o ambiente Docker**
+3. **Instale as dependências do projeto**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure o ambiente Docker**
    - O arquivo `docker-compose.yaml` já está pronto para subir Airflow e PostgreSQL.
   
 4. **Suba os containers**
