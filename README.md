@@ -40,11 +40,7 @@ Pipeline de dados automatizado para ingestão, limpeza e modelagem do histórico
 
 3. **Configure o ambiente Docker**
    - O arquivo `docker-compose.yaml` já está pronto para subir Airflow e PostgreSQL.
-   - Certifique-se que o volume da pasta `data` está mapeado:
-     ```
-     - ./data:/data
-     ```
-
+  
 4. **Suba os containers**
    ```bash
    docker compose up
