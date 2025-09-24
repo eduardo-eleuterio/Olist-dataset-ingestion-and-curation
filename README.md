@@ -112,6 +112,20 @@ Você pode acessar o banco de dados diretamente pelo terminal usando o comando a
        \q
        ```
 
+## Resultado 
+- Query final:
+       ```sql
+       SELECT  customer_unique_id, 
+        total_gasto, 
+        categoria_mais_comprada
+FROM gold.dm_vendas_clientes
+    WHERE estado_cliente = 'SP'
+        ORDER BY total_gasto DESC
+        LIMIT 10;
+       ```
+  <img width="566" height="234" alt="image" src="https://github.com/user-attachments/assets/ac856f4c-532d-488f-ba7c-e55e7f0da0a0" />
+
+
 ## Referências
 
 - [Dataset Olist no Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
